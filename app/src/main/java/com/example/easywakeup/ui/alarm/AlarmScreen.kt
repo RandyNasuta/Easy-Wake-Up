@@ -1,5 +1,7 @@
 package com.example.easywakeup.ui.alarm
 
+import android.R.attr.contentDescription
+import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.sharp.PauseCircle
 import androidx.compose.material.icons.sharp.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -40,6 +43,8 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,10 +53,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.easywakeup.R
 import com.example.easywakeup.ui.theme.Blue20
 import com.example.easywakeup.ui.theme.Blue40
 import com.example.easywakeup.ui.theme.Blue80
@@ -59,8 +67,12 @@ import com.example.easywakeup.ui.theme.EasyWakeUpTheme
 import java.util.Calendar
 
 @Composable
-fun AlarmScreen(modifier: Modifier = Modifier) {
-    var selectedSound by remember { mutableStateOf("Sound 1") }
+fun AlarmScreen(
+    modifier: Modifier = Modifier,
+    viewModel: AlarmViewModel = hiltViewModel(),
+    onSaveSuccess: () -> Unit = {}
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -97,15 +109,21 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
 
+                val timePickerState = rememberTimePickerState(
+                    initialHour = uiState.selectedHour,
+                    initialMinute = uiState.selectedMinute,
+                    is24Hour = true
+                )
+
+                LaunchedEffect(timePickerState.hour, timePickerState.minute) {
+                    viewModel.updateTime(timePickerState.hour, timePickerState.minute)
+                }
+
                 Box(
                     modifier = Modifier.padding(16.dp), contentAlignment = Alignment.Center
                 ) {
                     TimePicker(
-                        state = rememberTimePickerState(
-                            initialHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
-                            initialMinute = Calendar.getInstance().get(Calendar.MINUTE),
-                            is24Hour = true
-                        ), colors = TimePickerDefaults.colors()
+                        state = timePickerState, colors = TimePickerDefaults.colors()
                     )
                 }
 
@@ -132,13 +150,13 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)
                     ) {
                         ChallengeSwitchItem(
-                            title = "Foto Barang", checked = false, onCheckedChange = {})
+                            title = "Foto Barang", checked = uiState.isPhotoChallengeEnabled, onCheckedChange = {viewModel.setPhotoChallenge(it)})
 
                         ChallengeSwitchItem(
-                            title = "Berhitung", checked = false, onCheckedChange = {})
+                            title = "Berhitung", checked = uiState.isMathChallengeEnabled, onCheckedChange = {viewModel.setMathChallenge(it)})
 
                         ChallengeSwitchItem(
-                            title = "Menulis Kalimat", checked = false, onCheckedChange = {})
+                            title = "Menulis Kalimat", checked = uiState.isWritingChallengeEnabled, onCheckedChange = {viewModel.setWritingChallenge(it)})
                     }
                 }
 
@@ -155,15 +173,19 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
                 )
 
                 AlarmSoundDropDown(
-                    selectedSound = selectedSound, onSoundSelected = { sound ->
-                        selectedSound = sound
+                    selectedSound = uiState.selectedSound, onSoundSelected = { sound ->
+                        viewModel.setSound(sound)
                     }, modifier = Modifier
                 )
 
                 Spacer(modifier = Modifier.height(36.dp))
 
                 Button(
-                    onClick = {},
+                    onClick = {
+                        viewModel.saveAlarm {
+                            onSaveSuccess()
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFFB703)
                     ),
@@ -190,8 +212,13 @@ fun AlarmScreen(modifier: Modifier = Modifier) {
 private fun AlarmSoundDropDown(
     selectedSound: String, onSoundSelected: (String) -> Unit, modifier: Modifier = Modifier
 ) {
+
     val soundList = listOf("Sound 1", "Sound 2", "Sound 3")
     var expanded by remember { mutableStateOf(false) }
+    var soundId by remember { mutableStateOf(R.raw.sound_1) }
+    val mContext = LocalContext.current
+    var mpPlayer by remember { mutableStateOf(MediaPlayer.create(mContext, soundId)) }
+    var isPlaying by remember { mutableStateOf(false) }
 
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -242,6 +269,19 @@ private fun AlarmSoundDropDown(
                         onClick = {
                             onSoundSelected(sound)
                             expanded = false
+
+                            mpPlayer.stop()
+                            mpPlayer.release()
+                            isPlaying = false
+
+                            soundId = when (sound) {
+                                "Sound 1" -> R.raw.sound_1
+                                "Sound 2" -> R.raw.sound_2
+                                "Sound 3" -> R.raw.sound_3
+                                else -> R.raw.sound_1
+                            }
+
+                            mpPlayer = MediaPlayer.create(mContext, soundId)
                         },
                         contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                     )
@@ -252,11 +292,17 @@ private fun AlarmSoundDropDown(
         IconButton(
             modifier = modifier.size(48.dp),
             onClick = {
-
+                if (!isPlaying) {
+                    mpPlayer.start()
+                    isPlaying = true
+                } else {
+                    mpPlayer.pause()
+                    isPlaying = false
+                }
             }
         ) {
             Icon(
-                imageVector = Icons.Sharp.PlayCircle,
+                imageVector = if (!isPlaying) Icons.Sharp.PlayCircle else Icons.Sharp.PauseCircle,
                 contentDescription = "Putar Suara",
                 tint = Color(0xFFFFB703),
                 modifier = Modifier.size(36.dp)
