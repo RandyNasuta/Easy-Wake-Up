@@ -6,9 +6,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.easywakeup.ui.alarm.AlarmScreen
 import com.example.easywakeup.ui.home.HomeScreen
 
@@ -31,7 +33,10 @@ fun AppNavigation(
         ) {
             HomeScreen(
                 onclick = {
-                    navController.navigate(Screen.Alarm.route)
+                    navController.navigate(Screen.Alarm.createRoute())
+                },
+                onItemClicked = { alarmId ->
+                    navController.navigate(Screen.Alarm.createRoute(alarmId))
                 }
             )
         }
@@ -39,8 +44,20 @@ fun AppNavigation(
         //Route to Alarm Screen
         composable(
             route = Screen.Alarm.route,
-        ) {
-            AlarmScreen()
+            arguments = listOf(
+                navArgument("alarmId") {
+                    type = NavType.LongType
+                }
+            )
+        ) { backStackEntry ->
+            val alarmId = backStackEntry.arguments?.getLong("alarmId") ?: -1L
+
+            AlarmScreen(
+                alarmId = alarmId,
+                onSaveSuccess = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

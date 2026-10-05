@@ -1,5 +1,6 @@
 package com.example.easywakeup.ui.home
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -22,17 +24,16 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.easywakeup.data.model.entity.Alarm
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.easywakeup.ui.theme.Blue20
 import com.example.easywakeup.ui.theme.Blue40
 import com.example.easywakeup.ui.theme.Blue80
@@ -42,17 +43,13 @@ import com.example.easywakeup.ui.theme.EasyWakeUpTheme
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    onclick: () -> Unit = {}
+    onclick: () -> Unit = {},
+    onItemClicked: (Long) -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    val dummyData = remember {
-        mutableStateOf(
-            listOf(
-                Alarm(1, "05:00", "Bangun Pagi", true, "Foto Barang, Berhitung, Menulis Kalimat"),
-                Alarm(2, "06:30", "Olahraga", true, "Foto Barang, Berhitung"),
-                Alarm(3, "07:00", "Berangkat Kerja", true, "Foto Barang, Menulis Kalimat")
-            )
-        )
-    }
+
+    val uiState by viewModel.uiState.collectAsState()
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
@@ -69,9 +66,10 @@ fun HomeScreen(
         }
     ) { innerPadding ->
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .padding(top = 12.dp)
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
@@ -82,25 +80,44 @@ fun HomeScreen(
                     )
                 )
         ) {
-            Column(
-                modifier = modifier
-                    .padding(horizontal = 12.dp, vertical = 16.dp)
-                    .fillMaxSize(),
-            ) {
-                LazyColumn(
-                    modifier = modifier
+
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color(0xFFFFB703)
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 16.dp)
                         .fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    LazyColumn(
+                        modifier = modifier
+                            .fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                    items(
-                        dummyData.value,
-                        key = { it.id },
-                    ) { alarm ->
-                        AlarmCard(
-                            modifier = modifier,
-                            time = alarm.time,
-                            isActive = alarm.isActive
-                        )
+                        items(
+                            uiState.alarms,
+                            key = { it.id },
+                        ) { alarm ->
+                            AlarmCard(
+                                modifier = modifier,
+                                time = alarm.time,
+                                isActive = alarm.isActive,
+                                onCheckedChange = { isChecked ->
+                                    viewModel.toggleAlarmStatus(alarm, isChecked)
+                                },
+                                onClick = {
+                                    Log.i("HomeScreen", "HomeScreen: alarm id ${alarm.id}")
+                                    onItemClicked(alarm.id)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -113,14 +130,16 @@ private fun AlarmCard(
     modifier: Modifier = Modifier,
     time: String,
     isActive: Boolean,
-    onCheckedChange: (Boolean) -> Unit = {}
+    onCheckedChange: (Boolean) -> Unit = {},
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White.copy(alpha = 0.1f)
-        )
+        ),
+        onClick = onClick
     ) {
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,

@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -70,9 +71,12 @@ import java.util.Calendar
 fun AlarmScreen(
     modifier: Modifier = Modifier,
     viewModel: AlarmViewModel = hiltViewModel(),
+    alarmId: Long = -1L,
     onSaveSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -109,23 +113,27 @@ fun AlarmScreen(
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
 
-                val timePickerState = rememberTimePickerState(
-                    initialHour = uiState.selectedHour,
-                    initialMinute = uiState.selectedMinute,
-                    is24Hour = true
-                )
-
-                LaunchedEffect(timePickerState.hour, timePickerState.minute) {
-                    viewModel.updateTime(timePickerState.hour, timePickerState.minute)
-                }
-
-                Box(
-                    modifier = Modifier.padding(16.dp), contentAlignment = Alignment.Center
-                ) {
-                    TimePicker(
-                        state = timePickerState, colors = TimePickerDefaults.colors()
+                key(uiState.selectedHour, uiState.selectedMinute) {
+                    val timePickerState = rememberTimePickerState(
+                        initialHour = uiState.selectedHour,
+                        initialMinute = uiState.selectedMinute,
+                        is24Hour = true
                     )
+
+                    LaunchedEffect(timePickerState.hour, timePickerState.minute) {
+                        viewModel.updateTime(timePickerState.hour, timePickerState.minute)
+                    }
+
+                    Box(
+                        modifier = Modifier.padding(16.dp), contentAlignment = Alignment.Center
+                    ) {
+                        TimePicker(
+                            state = timePickerState, colors = TimePickerDefaults.colors()
+                        )
+                    }
                 }
+
+
 
                 Spacer(modifier = Modifier.height(20.dp))
 
