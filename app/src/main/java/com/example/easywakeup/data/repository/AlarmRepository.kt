@@ -5,8 +5,9 @@ import com.example.easywakeup.data.model.entity.Alarm
 import kotlinx.coroutines.flow.Flow
 
 class AlarmRepository(private val alarmDao: AlarmDao) {
-    suspend fun create(alarm: Alarm) {
+    suspend fun create(alarm: Alarm): Long {
         alarmDao.createAlarm(alarm)
+        return alarm.id
     }
 
     fun getAlarmById(id: Long): Flow<Alarm?> {

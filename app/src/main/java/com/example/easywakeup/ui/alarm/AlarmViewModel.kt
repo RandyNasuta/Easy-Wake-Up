@@ -1,12 +1,15 @@
 package com.example.easywakeup.ui.alarm
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.easywakeup.data.model.entity.Alarm
 import com.example.easywakeup.data.repository.AlarmRepository
+import com.example.easywakeup.utils.AlarmScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,8 +32,11 @@ data class AlarmUiState(
 @HiltViewModel
 class AlarmViewModel @Inject constructor(
     private val repository: AlarmRepository,
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private val alarmScheduler = AlarmScheduler(context)
 
     private val _uiState = MutableStateFlow(AlarmUiState())
     val uiState: StateFlow<AlarmUiState> = _uiState.asStateFlow()
@@ -106,14 +112,28 @@ class AlarmViewModel @Inject constructor(
             if (state.isMathChallengeEnabled) activeChallenges.add("Matematika")
             if (state.isWritingChallengeEnabled) activeChallenges.add("Tulis")
 
-            val newAlarm = Alarm(
+            val alarm = Alarm(
+                id = if (state.alarmId != -1L) state.alarmId else 0L,
                 time = formattedTime,
                 sound = state.selectedSound,
                 isActive = state.isActive,
                 methodList = activeChallenges.joinToString(", ")
             )
 
-            repository.create(newAlarm)
+            val insertedId = repository.create(alarm)
+
+            val finalAlarm = if (alarm.id == 0L && insertedId > 0) {
+                alarm.copy(id = insertedId)
+            } else {
+                alarm
+            }
+
+            if (finalAlarm.isActive) {
+                alarmScheduler.schedule(finalAlarm)
+            } else {
+                alarmScheduler.cancel(finalAlarm)
+            }
+
             onSuccess()
         }
     }
