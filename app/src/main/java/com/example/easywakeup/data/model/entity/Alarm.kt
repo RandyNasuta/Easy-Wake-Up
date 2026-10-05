@@ -8,5 +8,7 @@ data class Alarm(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val time: String,
+    val sound: String,
+    val isActive: Boolean,
     val methodList: String
 )

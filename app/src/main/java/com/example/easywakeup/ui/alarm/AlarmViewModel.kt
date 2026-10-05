@@ -16,10 +16,11 @@ import javax.inject.Inject
 data class AlarmUiState(
     val selectedHour: Int = Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
     val selectedMinute: Int = Calendar.getInstance().get(Calendar.MINUTE),
+    val selectedSound: String = "Sound 1",
+    val isActive: Boolean = true,
     val isPhotoChallengeEnabled: Boolean = false,
     val isMathChallengeEnabled: Boolean = false,
-    val isWritingChallengeEnabled: Boolean = false,
-    val selectedSound: String = "Sound 1"
+    val isWritingChallengeEnabled: Boolean = false
 )
 
 @HiltViewModel
@@ -52,6 +53,10 @@ class AlarmViewModel @Inject constructor(
         _uiState.update { it.copy(selectedSound = sound) }
     }
 
+    fun setActive(enabled: Boolean) {
+        _uiState.update { it.copy(isActive = enabled) }
+    }
+
     fun saveAlarm(onSuccess: () -> Unit) {
         viewModelScope.launch {
             val state = _uiState.value
@@ -64,7 +69,9 @@ class AlarmViewModel @Inject constructor(
 
             val newAlarm = Alarm(
                 time = formattedTime,
-                methodList = "${activeChallenges.joinToString(", ")} | Sound: ${state.selectedSound}"
+                sound = state.selectedSound,
+                isActive = state.isActive,
+                methodList = activeChallenges.joinToString(", ")
             )
 
             repository.create(newAlarm)
