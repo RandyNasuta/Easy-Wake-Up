@@ -13,13 +13,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,8 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -190,8 +186,14 @@ fun AlarmRingScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            AlarmWriting(
-                targetSentence = sentenceList.random()
+//            AlarmWriting(
+////                targetSentence = sentenceList.random()
+////            )
+
+            AlarmCalculating(
+                number1 = (1..100).random(),
+                number2 = (1..100).random(),
+                onChallengeCompleted = onDismissClicked
             )
 
             if (methods.isNotEmpty()) {
@@ -206,7 +208,6 @@ fun AlarmRingScreen(
         }
     }
 }
-
 
 @Composable
 private fun AlarmWriting(
@@ -290,6 +291,120 @@ private fun AlarmWriting(
         Button(
             onClick = {
                 if (userInput.trim() == targetSentence.trim()) {
+                    onChallengeCompleted()
+                } else {
+                    isError = true
+                }
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB703)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = "Kirim & Matikan Alarm",
+                color = Color(0xFF0B132B),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun AlarmCalculating(
+    modifier: Modifier = Modifier,
+    number1: Int,
+    number2: Int,
+    onChallengeCompleted: () -> Unit
+) {
+    var userInput by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
+
+    val operatorChoosen = listOf("+", "-", "*", "/").random()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Hitung perhitungan di bawah untuk mematikan alarm:",
+            color = Color.White.copy(alpha = 0.8f),
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White.copy(alpha = 0.15f)
+            ),
+        ) {
+            Text(
+                text = "$number1 ${operatorChoosen.random()} $number2",
+                color = Color(0xFFFFB703),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(16.dp).fillMaxWidth()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OutlinedTextField(
+            value = userInput,
+            onValueChange = {
+                userInput = it
+                if (isError) isError = false
+            },
+            label = {
+                Text("Ketik di sini...", color = Color.White.copy(alpha = 0.7f))
+            },
+            isError = isError,
+            singleLine = false,
+            maxLines = 3,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedBorderColor = Color(0xFFFFB703),
+                unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                errorBorderColor = Color.Red,
+                focusedLabelColor = Color(0xFFFFB703)
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        if (isError) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Hasil perhitungan belum benar, silahkan coba lagi!",
+                color = Color.Red,
+                fontSize = 12.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = {
+
+                val result = when(operatorChoosen) {
+                    "+" -> number1 + number2
+                    "-" -> number1 - number2
+                    "*" -> number1 * number2
+                    else -> number1 / number2
+                }
+
+                if (userInput.trim().toInt() == result) {
                     onChallengeCompleted()
                 } else {
                     isError = true
