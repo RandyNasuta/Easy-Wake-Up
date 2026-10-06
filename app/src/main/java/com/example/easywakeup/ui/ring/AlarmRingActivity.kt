@@ -2,6 +2,7 @@ package com.example.easywakeup.ui.ring
 
 import android.content.Context
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -9,6 +10,7 @@ import android.os.VibratorManager
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +49,7 @@ import com.example.easywakeup.ui.theme.Blue20
 import com.example.easywakeup.ui.theme.Blue40
 import com.example.easywakeup.ui.theme.Blue80
 import com.example.easywakeup.ui.theme.EasyWakeUpTheme
+import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -57,8 +60,11 @@ class AlarmRingActivity : ComponentActivity() {
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
 
+    @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
 
         val soundName = intent.getStringExtra("EXTRA_ALARM_SOUND") ?: "Sound 1"
         val methods = intent.getStringExtra("EXTRA_ALARM_METHODS") ?: ""
@@ -70,15 +76,12 @@ class AlarmRingActivity : ComponentActivity() {
         setContent {
             EasyWakeUpTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     AlarmRingScreen(
-                        methods = methods,
-                        onDismissClicked = {
+                        methods = methods, onDismissClicked = {
                             stopAlarmAndFinish()
-                        }
-                    )
+                        })
                 }
             }
         }
@@ -104,19 +107,18 @@ class AlarmRingActivity : ComponentActivity() {
 
     private fun startVibration() {
         vibrator = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            val vibratorManager =
+                getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
             vibratorManager.defaultVibrator
         } else {
-            @Suppress("DEPRECATION")
-            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            @Suppress("DEPRECATION") getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
 
         val pattern = longArrayOf(0, 1000, 1000) // Getar 1 detik, jeda 1 detik
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
         } else {
-            @Suppress("DEPRECATION")
-            vibrator?.vibrate(pattern, 0)
+            @Suppress("DEPRECATION") vibrator?.vibrate(pattern, 0)
         }
     }
 
@@ -139,18 +141,22 @@ class AlarmRingActivity : ComponentActivity() {
 
 @Composable
 fun AlarmRingScreen(
-    methods: String = "",
-    onDismissClicked: () -> Unit = {}
+    methods: String = "", onDismissClicked: () -> Unit = {}
 ) {
-    val sentenceList: List<String> = listOf(
-        "Tak ada rotan, akar pun jadi",
-        "Bersakit-sakit dahulu, bersenang-senang kemudian",
-        "Sedikit demi sedikit, lama-lama menjadi bukit"
-    )
+    val targetSentence = remember {
+        listOf(
+            "Tak ada rotan, akar pun jadi",
+            "Bersakit-sakit dahulu, bersenang-senang kemudian",
+            "Sedikit demi sedikit, lama-lama menjadi bukit"
+        ).random()
+    }
 
     val currentTime = remember {
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
     }
+
+    val num1 = remember { (1..100).random() }
+    val num2 = remember { (1..100).random() }
 
     Box(
         modifier = Modifier
@@ -160,8 +166,7 @@ fun AlarmRingScreen(
                     colors = listOf(Blue20, Blue40, Blue80)
                 )
             )
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
+            .padding(24.dp), contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -186,25 +191,39 @@ fun AlarmRingScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-//            AlarmWriting(
-////                targetSentence = sentenceList.random()
-////            )
-
             AlarmCalculating(
-                number1 = (1..100).random(),
-                number2 = (1..100).random(),
+                number1 = num1,
+                number2 = num2,
                 onChallengeCompleted = onDismissClicked
             )
-
-            if (methods.isNotEmpty()) {
-                if (methods.contains("Menulis Kalimat")) {
-
-                } else if (methods.contains("Berhitung")) {
-
-                } else if (methods.contains("Foto Barang")) {
-
-                }
-            }
+//            if (methods.contains("Menulis Kalimat")) {
+//                AlarmWriting(
+//                    targetSentence = targetSentence,
+//                    onChallengeCompleted = onDismissClicked
+//                )
+//            } else if (methods.contains("Berhitung")) {
+//                AlarmCalculating(
+//                    number1 = num1,
+//                    number2 = num2,
+//                    onChallengeCompleted = onDismissClicked
+//                )
+//            } else if (methods.contains("Foto Barang")) {
+//
+//            } else {
+//                Button(
+//                    onClick = onDismissClicked,
+//                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB703)),
+//                    modifier = Modifier.fillMaxWidth().height(50.dp),
+//                    shape = RoundedCornerShape(12.dp)
+//                ) {
+//                    Text(
+//                        text = "Matikan Alarm",
+//                        color = Color(0xFF0B132B),
+//                        fontSize = 16.sp,
+//                        fontWeight = FontWeight.Bold
+//                    )
+//                }
+//            }
         }
     }
 }
@@ -322,7 +341,7 @@ fun AlarmCalculating(
     var userInput by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
 
-    val operatorChoosen = listOf("+", "-", "*", "/").random()
+    val operatorChoosen = remember { listOf("+", "-", "*", "/").random() }
 
     Column(
         modifier = Modifier
@@ -332,7 +351,7 @@ fun AlarmCalculating(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Hitung perhitungan di bawah untuk mematikan alarm:",
+            text = "Hitung perhitungan di bawah untuk mematikan alarm (Jika desimal, tulis 2 angka dibelakang koma):",
             color = Color.White.copy(alpha = 0.8f),
             fontSize = 14.sp,
             textAlign = TextAlign.Center
@@ -348,12 +367,14 @@ fun AlarmCalculating(
             ),
         ) {
             Text(
-                text = "$number1 ${operatorChoosen.random()} $number2",
+                text = "$number1 ${operatorChoosen} $number2",
                 color = Color(0xFFFFB703),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(16.dp).fillMaxWidth()
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
             )
         }
 
@@ -397,14 +418,21 @@ fun AlarmCalculating(
         Button(
             onClick = {
 
-                val result = when(operatorChoosen) {
-                    "+" -> number1 + number2
-                    "-" -> number1 - number2
-                    "*" -> number1 * number2
-                    else -> number1 / number2
+                val formatDecimal = DecimalFormat("#.##")
+
+                val result = when (operatorChoosen) {
+                    "+" -> (number1 + number2).toDouble()
+                    "-" -> (number1 - number2).toDouble()
+                    "*" -> (number1 * number2).toDouble()
+                    else -> {
+                        val division = number1.toDouble() / number2.toDouble()
+                        formatDecimal.format(division).toDouble()
+                    }
                 }
 
-                if (userInput.trim().toInt() == result) {
+                val userAnswer = userInput.trim().toDoubleOrNull()
+
+                if (userAnswer != null && userAnswer == result) {
                     onChallengeCompleted()
                 } else {
                     isError = true
