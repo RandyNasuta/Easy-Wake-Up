@@ -12,7 +12,9 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import android.view.WindowInsetsController
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.camera.core.ImageCapture
@@ -63,6 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.easywakeup.R
 import com.example.easywakeup.ui.theme.Blue20
@@ -95,9 +100,17 @@ class AlarmRingActivity : ComponentActivity() {
         val soundName = intent.getStringExtra("EXTRA_ALARM_SOUND") ?: "Sound 1"
         val methods = intent.getStringExtra("EXTRA_ALARM_METHODS") ?: ""
 
-        //Putar alarm
         startAlarmAudio(soundName)
         startVibration()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+            }
+        })
+
+        val windowInsetController = WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetController.hide(WindowInsetsCompat.Type.systemBars())
+        windowInsetController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         setContent {
             EasyWakeUpTheme {
@@ -133,9 +146,11 @@ class AlarmRingActivity : ComponentActivity() {
                     .build()
                 setAudioAttributes(audioAttributes)
 
-                isLooping = true
-
-                setOnCompletionListener { mp -> mp.start() }
+                isLooping = false
+                setOnCompletionListener { mp ->
+                    mp.seekTo(0)
+                    mp.start()
+                }
 
                 prepare()
                 start()
@@ -146,16 +161,16 @@ class AlarmRingActivity : ComponentActivity() {
     }
 
     private fun startVibration() {
-        vibrator = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager =
-                getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
             vibratorManager.defaultVibrator
         } else {
-            @Suppress("DEPRECATION") getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            @Suppress("DEPRECATION") getSystemService(VIBRATOR_SERVICE) as Vibrator
         }
 
-        val pattern = longArrayOf(0, 1000, 1000) // Getar 1 detik, jeda 1 detik
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        val pattern = longArrayOf(0, 1000, 1000)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
         } else {
             @Suppress("DEPRECATION") vibrator?.vibrate(pattern, 0)
@@ -229,7 +244,7 @@ fun AlarmRingScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             Text(
-                text = "Wake Up!",
+                text = "Segera Bangun!",
                 color = Color(0xFFFFB703),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
@@ -287,7 +302,6 @@ fun AlarmRingScreen(
                                 Pair("Tas", "Bag"),
                                 Pair("Buku", "Book"),
                                 Pair("Gelas / Cangkir", "Cup"),
-                                Pair("Pakaian / Baju", "Clothing")
                             ).random()
                         }
 
@@ -316,7 +330,7 @@ fun AlarmRingScreen(
                                             targetObject = objectList.second,
                                             onSuccess = {
                                                 isAnalyzing = false
-                                                onChallengeSuccess() // Benar! Matikan alarm
+                                                onChallengeSuccess()
                                             },
                                             onFail = { errorMsg ->
                                                 Log.e("AlarmRingActivity", "Gagal foto: $errorMsg")
@@ -428,7 +442,7 @@ private fun AlarmWritingChallenge(
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
-                text = "Kirim & Matikan Alarm",
+                text = "Matikan Alarm",
                 color = Color(0xFF0B132B),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -556,7 +570,7 @@ fun AlarmCalculatingChallenge(
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
-                text = "Kirim & Matikan Alarm",
+                text = "Matikan Alarm",
                 color = Color(0xFF0B132B),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -696,7 +710,6 @@ private fun analyzePhoto(
         "bag" -> listOf("bag", "backpack", "handbag", "luggage & bags")
         "book" -> listOf("book", "textbook", "paper", "notebook")
         "cup" -> listOf("cup", "mug", "drinkware", "coffee cup")
-        "clothing" -> listOf("clothing", "apparel", "shirt", "t-shirt", "jacket", "sweater", "textile")
         else -> listOf(targetObject)
     }
 

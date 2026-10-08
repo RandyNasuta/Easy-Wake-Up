@@ -33,7 +33,6 @@ class AlarmScheduler(private val context: Context) {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
 
-            //Atur waktu yang dipilih untuk besok, jika sudah lewat
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }

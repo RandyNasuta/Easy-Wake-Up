@@ -1,20 +1,18 @@
 package com.example.easywakeup.ui.alarm
 
-import android.R.attr.contentDescription
 import android.media.MediaPlayer
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,7 +23,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -39,12 +36,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TimeInput
-import androidx.compose.material3.TimeInputDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,8 +52,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -69,7 +63,6 @@ import com.example.easywakeup.ui.theme.Blue20
 import com.example.easywakeup.ui.theme.Blue40
 import com.example.easywakeup.ui.theme.Blue80
 import com.example.easywakeup.ui.theme.EasyWakeUpTheme
-import java.util.Calendar
 
 @Composable
 fun AlarmScreen(
@@ -79,6 +72,14 @@ fun AlarmScreen(
     onSaveSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    val timePickerState = key(uiState.selectedHour, uiState.selectedMinute) {
+        rememberTimePickerState(
+            initialHour = uiState.selectedHour,
+            initialMinute = uiState.selectedMinute,
+            is24Hour = true
+        )
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -115,33 +116,14 @@ fun AlarmScreen(
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
 
-                key(uiState.selectedHour, uiState.selectedMinute) {
-                    val timePickerState = rememberTimePickerState(
-                        initialHour = uiState.selectedHour,
-                        initialMinute = uiState.selectedMinute,
-                        is24Hour = true
+                Box(
+                    modifier = Modifier.padding(8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TimePicker(
+                        state = timePickerState,
+                        colors = TimePickerDefaults.colors()
                     )
-
-                    LaunchedEffect(timePickerState.hour, timePickerState.minute) {
-                        viewModel.updateTime(timePickerState.hour, timePickerState.minute)
-                    }
-
-                    Box(
-                        modifier = Modifier.padding(8.dp)
-                            .pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        event.changes.forEach { it.consume() }
-                                    }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        TimeInput(
-                            state = timePickerState, colors = TimeInputDefaults.colors()
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -199,6 +181,8 @@ fun AlarmScreen(
 
                 Button(
                     onClick = {
+                        viewModel.updateTime(timePickerState.hour, timePickerState.minute)
+
                         viewModel.saveAlarm {
                             onSaveSuccess()
                         }
@@ -229,13 +213,37 @@ fun AlarmScreen(
 private fun AlarmSoundDropDown(
     selectedSound: String, onSoundSelected: (String) -> Unit, modifier: Modifier = Modifier
 ) {
-
     val soundList = listOf("Sound 1", "Sound 2", "Sound 3")
     var expanded by remember { mutableStateOf(false) }
-    var soundId by remember { mutableStateOf(R.raw.sound_1) }
     val mContext = LocalContext.current
-    var mpPlayer by remember { mutableStateOf(MediaPlayer.create(mContext, soundId)) }
+
     var isPlaying by remember { mutableStateOf(false) }
+
+    var mPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+
+    DisposableEffect(selectedSound) {
+        val soundId = when (selectedSound) {
+            "Sound 1" -> R.raw.sound_1
+            "Sound 2" -> R.raw.sound_2
+            "Sound 3" -> R.raw.sound_3
+            else -> R.raw.sound_1
+        }
+
+        val player = MediaPlayer.create(mContext, soundId)
+
+        player.setOnCompletionListener {
+            isPlaying = false
+        }
+
+        mPlayer = player
+
+        onDispose {
+            if (player.isPlaying) {
+                player.stop()
+            }
+            player.release()
+        }
+    }
 
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -287,18 +295,7 @@ private fun AlarmSoundDropDown(
                             onSoundSelected(sound)
                             expanded = false
 
-                            mpPlayer.stop()
-                            mpPlayer.release()
                             isPlaying = false
-
-                            soundId = when (sound) {
-                                "Sound 1" -> R.raw.sound_1
-                                "Sound 2" -> R.raw.sound_2
-                                "Sound 3" -> R.raw.sound_3
-                                else -> R.raw.sound_1
-                            }
-
-                            mpPlayer = MediaPlayer.create(mContext, soundId)
                         },
                         contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                     )
@@ -310,10 +307,10 @@ private fun AlarmSoundDropDown(
             modifier = modifier.size(48.dp),
             onClick = {
                 if (!isPlaying) {
-                    mpPlayer.start()
+                    mPlayer?.start()
                     isPlaying = true
                 } else {
-                    mpPlayer.pause()
+                    mPlayer?.pause()
                     isPlaying = false
                 }
             }
