@@ -22,4 +22,7 @@ interface AlarmDao {
 
     @Update(onConflict = OnConflictStrategy.REPLACE)
     suspend fun updateAlarmStatus(alarm: Alarm)
+
+    @Query("DELETE FROM alarms WHERE id = :id")
+    suspend fun deleteAlarm(id: Long)
 }

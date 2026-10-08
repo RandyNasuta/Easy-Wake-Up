@@ -10,6 +10,10 @@ class AlarmRepository(private val alarmDao: AlarmDao) {
         return alarm.id
     }
 
+    suspend fun delete(id: Long) {
+        alarmDao.deleteAlarm(id)
+    }
+
     fun getAlarmById(id: Long): Flow<Alarm?> {
         return alarmDao.getAlarmById(id)
     }

@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-permission android:name="android.permission.CAMERA"/>
 
     <application
         android:allowBackup="true"
@@ -18,6 +21,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EasyWakeUp"
         android:name=".EasyWakeUpApp">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

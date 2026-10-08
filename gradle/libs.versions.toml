@@ -19,6 +19,8 @@ room = "3.0.3"
 ksp = "2.3.12"
 hilt = "2.60.1"
 hiltNavigation = "1.4.0"
+imageLabeling = "17.0.9"
+cameraX = "1.7.0-alpha02"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,6 +51,14 @@ androidx-room-compiler = { group = "androidx.room3", name = "room3-compiler", ve
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigation" }
+image-labeling = { group = "com.google.mlkit", name = "image-labeling", version.ref = "imageLabeling" }
+camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraX" }
+camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
+camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
+camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "cameraX" }
+camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
+camera-mlkit = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "cameraX" }
+camera-extension = { group = "androidx.camera", name = "camera-extensions", version.ref = "cameraX" }
 
 
 

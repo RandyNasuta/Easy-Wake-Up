@@ -1,6 +1,10 @@
 package com.example.easywakeup.ui.ring
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +15,11 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.view.LifecycleCameraController
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,11 +29,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -39,20 +54,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.easywakeup.R
 import com.example.easywakeup.ui.theme.Blue20
 import com.example.easywakeup.ui.theme.Blue40
 import com.example.easywakeup.ui.theme.Blue80
 import com.example.easywakeup.ui.theme.EasyWakeUpTheme
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.apply
+import kotlin.math.floor
 
 class AlarmRingActivity : ComponentActivity() {
 
@@ -96,8 +122,22 @@ class AlarmRingActivity : ComponentActivity() {
         }
 
         try {
-            mediaPlayer = MediaPlayer.create(this, soundResId).apply {
+            mediaPlayer = MediaPlayer().apply {
+                val afd = resources.openRawResourceFd(soundResId)
+                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                afd.close()
+
+                val audioAttributes = AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .build()
+                setAudioAttributes(audioAttributes)
+
                 isLooping = true
+
+                setOnCompletionListener { mp -> mp.start() }
+
+                prepare()
                 start()
             }
         } catch (e: Exception) {
@@ -141,7 +181,8 @@ class AlarmRingActivity : ComponentActivity() {
 
 @Composable
 fun AlarmRingScreen(
-    methods: String = "", onDismissClicked: () -> Unit = {}
+    methods: String = "",
+    onDismissClicked: () -> Unit = {}
 ) {
     val targetSentence = remember {
         listOf(
@@ -157,6 +198,20 @@ fun AlarmRingScreen(
 
     val num1 = remember { (1..100).random() }
     val num2 = remember { (1..100).random() }
+
+    val challengeQueue = remember(methods) {
+        methods.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    var currentStep by remember { mutableStateOf(0) }
+
+    val onChallengeSuccess: () -> Unit = {
+        if (currentStep < challengeQueue.size - 1){
+            currentStep++
+        } else {
+            onDismissClicked()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -191,45 +246,96 @@ fun AlarmRingScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            AlarmCalculating(
-                number1 = num1,
-                number2 = num2,
-                onChallengeCompleted = onDismissClicked
-            )
-//            if (methods.contains("Menulis Kalimat")) {
-//                AlarmWriting(
-//                    targetSentence = targetSentence,
-//                    onChallengeCompleted = onDismissClicked
-//                )
-//            } else if (methods.contains("Berhitung")) {
-//                AlarmCalculating(
-//                    number1 = num1,
-//                    number2 = num2,
-//                    onChallengeCompleted = onDismissClicked
-//                )
-//            } else if (methods.contains("Foto Barang")) {
-//
-//            } else {
-//                Button(
-//                    onClick = onDismissClicked,
-//                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB703)),
-//                    modifier = Modifier.fillMaxWidth().height(50.dp),
-//                    shape = RoundedCornerShape(12.dp)
-//                ) {
-//                    Text(
-//                        text = "Matikan Alarm",
-//                        color = Color(0xFF0B132B),
-//                        fontSize = 16.sp,
-//                        fontWeight = FontWeight.Bold
-//                    )
-//                }
-//            }
+            Log.i("AlarmRingScreen", "Challenges: ${challengeQueue.toString()}")
+            if (challengeQueue.isEmpty()) {
+                Button(
+                    onClick = onDismissClicked,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB703)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "Matikan Alarm",
+                        color = Color(0xFF0B132B),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                when (challengeQueue[currentStep]) {
+                    "Tulis" -> {
+                        AlarmWritingChallenge(
+                            targetSentence = targetSentence,
+                            onChallengeCompleted = onChallengeSuccess
+                        )
+                    }
+                    "Matematika" -> {
+                        AlarmCalculatingChallenge(
+                            number1 = num1,
+                            number2 = num2,
+                            onChallengeCompleted = onChallengeSuccess
+                        )
+                    }
+                    "Foto Barang" -> {
+                        val objectList = remember {
+                            listOf(
+                                Pair("Sepatu", "Shoe"),
+                                Pair("Kursi", "Chair"),
+                                Pair("Botol Minum", "Bottle"),
+                                Pair("Tas", "Bag"),
+                                Pair("Buku", "Book"),
+                                Pair("Gelas / Cangkir", "Cup"),
+                                Pair("Pakaian / Baju", "Clothing")
+                            ).random()
+                        }
+
+                        var errorMessage by remember { mutableStateOf("") }
+                        var isAnalyzing by remember { mutableStateOf(false) }
+
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            if (errorMessage.isNotEmpty()) {
+                                Text(
+                                    text = errorMessage,
+                                    color = Color.Red,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+
+                            if (isAnalyzing) {
+                                Text("Proses analisis...", color = Color.White)
+                            } else {
+                                AlarmPhotoChallenge(
+                                    targetObject = objectList.first,
+                                    onPhotoCaptured = { bitmap ->
+                                        isAnalyzing = true
+
+                                        analyzePhoto(
+                                            bitmap = bitmap,
+                                            targetObject = objectList.second,
+                                            onSuccess = {
+                                                isAnalyzing = false
+                                                onChallengeSuccess() // Benar! Matikan alarm
+                                            },
+                                            onFail = { errorMsg ->
+                                                Log.e("AlarmRingActivity", "Gagal foto: $errorMsg")
+                                                isAnalyzing = false
+                                                errorMessage = "Salah! Coba foto dari sudut lain."
+                                            }
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
-
 @Composable
-private fun AlarmWriting(
+private fun AlarmWritingChallenge(
     targetSentence: String,
     onChallengeCompleted: () -> Unit = {},
 ) {
@@ -282,8 +388,7 @@ private fun AlarmWriting(
                 Text("Ketik di sini...", color = Color.White.copy(alpha = 0.7f))
             },
             isError = isError,
-            singleLine = false,
-            maxLines = 3,
+            singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
@@ -293,7 +398,8 @@ private fun AlarmWriting(
                 focusedLabelColor = Color(0xFFFFB703)
             ),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
         )
 
         if (isError) {
@@ -332,7 +438,7 @@ private fun AlarmWriting(
 }
 
 @Composable
-fun AlarmCalculating(
+fun AlarmCalculatingChallenge(
     modifier: Modifier = Modifier,
     number1: Int,
     number2: Int,
@@ -342,6 +448,9 @@ fun AlarmCalculating(
     var isError by remember { mutableStateOf(false) }
 
     val operatorChoosen = remember { listOf("+", "-", "*", "/").random() }
+
+    val displayNum1 = remember { number1 }
+    val displayNum2 = remember { number2 }
 
     Column(
         modifier = Modifier
@@ -367,7 +476,7 @@ fun AlarmCalculating(
             ),
         ) {
             Text(
-                text = "$number1 ${operatorChoosen} $number2",
+                text = "$displayNum1 ${operatorChoosen} $displayNum2",
                 color = Color(0xFFFFB703),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
@@ -417,22 +526,24 @@ fun AlarmCalculating(
 
         Button(
             onClick = {
-
-                val formatDecimal = DecimalFormat("#.##")
-
                 val result = when (operatorChoosen) {
-                    "+" -> (number1 + number2).toDouble()
-                    "-" -> (number1 - number2).toDouble()
-                    "*" -> (number1 * number2).toDouble()
+                    "+" -> (displayNum1 + displayNum2).toDouble()
+                    "-" -> (displayNum1 - displayNum2).toDouble()
+                    "*" -> (displayNum1 * displayNum2).toDouble()
                     else -> {
-                        val division = number1.toDouble() / number2.toDouble()
-                        formatDecimal.format(division).toDouble()
+                        val division = displayNum1.toDouble() / displayNum2.toDouble()
+                        floor(division * 100) / 100.0
                     }
                 }
 
-                val userAnswer = userInput.trim().toDoubleOrNull()
+                val cleanUserInput = userInput.trim()
+                    .replace(",", ".")
+                    .replace("–", "-")
+                    .replace("—", "-")
 
-                if (userAnswer != null && userAnswer == result) {
+                val userAnswer = cleanUserInput.toDoubleOrNull()
+
+                if (userAnswer != null && kotlin.math.abs(userAnswer - result) < 0.01) {
                     onChallengeCompleted()
                 } else {
                     isError = true
@@ -452,6 +563,164 @@ fun AlarmCalculating(
             )
         }
     }
+}
+
+@Composable
+fun AlarmPhotoChallenge(
+    modifier: Modifier = Modifier,
+    targetObject: String = "Kursi",
+    onPhotoCaptured: (Bitmap) -> Unit = {}
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    val hasCameraPermission = ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.CAMERA
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    if (!hasCameraPermission) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black), contentAlignment = Alignment.Center) {
+            Text(
+                text = "Izin Kamera belum diberikan!\nBuka kunci HP dan berikan izin pada aplikasi.",
+                color = Color.Red,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        return
+    }
+
+    var cameraController = remember {
+        LifecycleCameraController(context).apply {
+            bindToLifecycle(lifecycleOwner)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { context ->
+                PreviewView(context).apply {
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                    controller = cameraController
+                }
+            }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 40.dp, start = 20.dp, end = 20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.6f))
+        ) {
+            Text(
+                text = "Foto objek $targetObject",
+                color = Color(0xFFFFB703),
+                fontSize = 18.sp,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+
+        Button(
+            onClick = {
+                val mainExecutor = ContextCompat.getMainExecutor(context)
+                cameraController.takePicture(
+                    mainExecutor,
+                    object : ImageCapture.OnImageCapturedCallback() {
+                        override fun onCaptureSuccess(imageProxy: ImageProxy) {
+                            super.onCaptureSuccess(imageProxy)
+                            val bitmap = imageProxyToBitmap(imageProxy)
+                            imageProxy.close()
+                            onPhotoCaptured(bitmap)
+                        }
+
+                        override fun onError(exception: ImageCaptureException) {
+                            super.onError(exception)
+                            Log.e("AlarmRingActivity", "Gagal mengambil foto: ${exception.message}")
+                        }
+                    }
+                )
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 40.dp)
+                .size(80.dp),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB703))
+        ) {
+            Icon(
+                imageVector = Icons.Default.PhotoCamera,
+                contentDescription = "Ambil Foto",
+                tint = Color(0xFF0B132B)
+            )
+        }
+    }
+}
+
+private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
+    val planeProxy = imageProxy.planes[0]
+    val buffer = planeProxy.buffer
+    val bytes = ByteArray(buffer.remaining())
+    buffer.get(bytes)
+
+    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+
+    val matrix = Matrix()
+    matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
+
+    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+}
+
+private fun analyzePhoto(
+    bitmap: Bitmap,
+    targetObject: String,
+    onSuccess: () -> Unit,
+    onFail: (String) -> Unit
+) {
+    val TAG = "AlarmRingActivity"
+    val image = InputImage.fromBitmap(bitmap, 0)
+
+    val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
+
+    val validKeywords = when (targetObject.lowercase()) {
+        "shoe" -> listOf("shoe", "footwear", "sneaker", "boot", "sandal", "foot")
+        "chair" -> listOf("chair", "furniture", "stool", "seat", "wood", "armrest")
+        "bottle" -> listOf("bottle", "drink", "water bottle", "plastic bottle", "container")
+        "bag" -> listOf("bag", "backpack", "handbag", "luggage & bags")
+        "book" -> listOf("book", "textbook", "paper", "notebook")
+        "cup" -> listOf("cup", "mug", "drinkware", "coffee cup")
+        "clothing" -> listOf("clothing", "apparel", "shirt", "t-shirt", "jacket", "sweater", "textile")
+        else -> listOf(targetObject)
+    }
+
+    labeler.process(image)
+        .addOnSuccessListener { labels ->
+            val detectedItems = labels.joinToString {
+                it.text
+            }
+            Log.d(TAG, "analyzePhoto: detectedItems $detectedItems")
+
+            val isMatch = labels.any { label ->
+                validKeywords.any { keyword -> label.text.equals(keyword, ignoreCase = true) } && label.confidence > 0.35f
+            }
+
+            if (isMatch) {
+                onSuccess()
+            } else {
+                onFail("Gambar tidak sesuai, terdeteksi: $detectedItems ")
+            }
+        }
+        .addOnFailureListener { message ->
+            Log.e(TAG, "analyzePhoto: error analyze: $message")
+            onFail("Gagal menganalisis foto, coba lagi")
+        }
 }
 
 @Preview

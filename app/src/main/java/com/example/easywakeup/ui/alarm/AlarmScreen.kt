@@ -39,6 +39,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimeInputDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
@@ -54,6 +56,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -75,8 +79,6 @@ fun AlarmScreen(
     onSaveSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -125,15 +127,22 @@ fun AlarmScreen(
                     }
 
                     Box(
-                        modifier = Modifier.padding(16.dp), contentAlignment = Alignment.Center
+                        modifier = Modifier.padding(8.dp)
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        event.changes.forEach { it.consume() }
+                                    }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        TimePicker(
-                            state = timePickerState, colors = TimePickerDefaults.colors()
+                        TimeInput(
+                            state = timePickerState, colors = TimeInputDefaults.colors()
                         )
                     }
                 }
-
-
 
                 Spacer(modifier = Modifier.height(20.dp))
 

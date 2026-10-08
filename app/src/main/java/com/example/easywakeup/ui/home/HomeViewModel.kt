@@ -1,10 +1,13 @@
 package com.example.easywakeup.ui.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.easywakeup.data.model.entity.Alarm
 import com.example.easywakeup.data.repository.AlarmRepository
+import com.example.easywakeup.utils.AlarmScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,8 +24,11 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: AlarmRepository
+    private val repository: AlarmRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private val alarmScheduler = AlarmScheduler(context)
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -41,6 +47,13 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val updatedAlarm = alarm.copy(isActive = newStatus)
             repository.create(updatedAlarm)
+        }
+    }
+
+    fun deleteAlarm(alarm: Alarm) {
+        viewModelScope.launch {
+            alarmScheduler.cancel(alarm)
+            repository.delete(alarm.id)
         }
     }
 

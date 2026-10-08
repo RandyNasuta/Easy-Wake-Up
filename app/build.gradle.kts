@@ -69,8 +69,18 @@ dependencies {
     //Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
-
     implementation(libs.hilt.navigation.compose)
+
+    //Image Labeling
+    implementation(libs.image.labeling)
+
+    //CameraX
+    implementation(libs.camera.core)
+    implementation(libs.camera.camera2)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.camera.video)
+    implementation(libs.camera.view)
+    implementation(libs.camera.mlkit)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
