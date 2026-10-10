@@ -34,7 +34,7 @@
 
 ---
 
-## 🎥 Video Demo Aplikasi
+## 🎥 Video Demo
 
 [![Watch the video](https://img.shields.io/badge/YouTube-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/vADdamcTu-s?si=iaPX3M7sbIVP-5JF)
 
