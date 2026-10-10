@@ -1,6 +1,7 @@
 package com.example.easywakeup.ui.ring
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -69,6 +70,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.easywakeup.MainActivity
 import com.example.easywakeup.R
 import com.example.easywakeup.ui.theme.Blue20
 import com.example.easywakeup.ui.theme.Blue40
@@ -184,6 +186,11 @@ class AlarmRingActivity : ComponentActivity() {
 
         vibrator?.cancel()
 
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+
         finish()
     }
 
@@ -298,10 +305,9 @@ fun AlarmRingScreen(
                             listOf(
                                 Pair("Sepatu", "Shoe"),
                                 Pair("Kursi", "Chair"),
-                                Pair("Botol Minum", "Bottle"),
-                                Pair("Tas", "Bag"),
-                                Pair("Buku", "Book"),
-                                Pair("Gelas / Cangkir", "Cup"),
+//                                Pair("Tas", "Bag"),
+//                                Pair("Buku", "Book"),
+//                                Pair("Gelas / Cangkir", "Cup"),
                             ).random()
                         }
 
@@ -706,10 +712,9 @@ private fun analyzePhoto(
     val validKeywords = when (targetObject.lowercase()) {
         "shoe" -> listOf("shoe", "footwear", "sneaker", "boot", "sandal", "foot")
         "chair" -> listOf("chair", "furniture", "stool", "seat", "wood", "armrest")
-        "bottle" -> listOf("bottle", "drink", "water bottle", "plastic bottle", "container")
-        "bag" -> listOf("bag", "backpack", "handbag", "luggage & bags")
-        "book" -> listOf("book", "textbook", "paper", "notebook")
-        "cup" -> listOf("cup", "mug", "drinkware", "coffee cup")
+//        "bag" -> listOf("bag", "backpack", "handbag", "luggage & bags")
+//        "book" -> listOf("book", "textbook", "paper", "notebook")
+//        "cup" -> listOf("cup", "mug", "drinkware", "coffee cup")
         else -> listOf(targetObject)
     }
 

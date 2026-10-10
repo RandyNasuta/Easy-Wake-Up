@@ -82,6 +82,9 @@ dependencies {
     implementation(libs.camera.view)
     implementation(libs.camera.mlkit)
 
+    //Splash Screen
+    implementation(libs.splash.screen)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

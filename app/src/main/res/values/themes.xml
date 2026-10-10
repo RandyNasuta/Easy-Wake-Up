@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.EasyWakeUp" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.EasyWakeUp" parent="Theme.Material3.DayNight.NoActionBar">
+
+    </style>
+
+    <style name="Theme.EasyWakeUp.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenBackground">@color/blue_40</item>
+        <item name="postSplashScreenTheme">@style/Theme.EasyWakeUp</item>
+    </style>
 </resources>
