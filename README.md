@@ -28,15 +28,15 @@
 
 ## 📱 Screenshots
 
-|         Alarm List          |                    Alarm Setup                     |                       Challenges                       |
-|:---------------------------:|:--------------------------------------------------:|:------------------------------------------------------:|
-| ![List](screenshots/alarm1.jpeg) | ![Setup](screenshots/alarm2.jpeg) | ![Challenge](screenshots/alarm3.jpeg) |
+|         Alarm List          |                    Alarm Setup                     |                       Challenge                       |
+|:---------------------------:|:--------------------------------------------------:|:-----------------------------------------------------:|
+| ![List](screenshots/alarm1.jpeg) | ![Setup](screenshots/alarm2.jpeg) |         ![Challenge](screenshots/alarm3.jpeg)         |
 
 ---
 
 ## 🎥 Video Demo Aplikasi
 
-[![Watch the video](https://img.shields.io/badge/YouTube-Tonton%20Demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/vADdamcTu-s?si=iaPX3M7sbIVP-5JF)
+[![Watch the video](https://img.shields.io/badge/YouTube-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/vADdamcTu-s?si=iaPX3M7sbIVP-5JF)
 
 ---
 
@@ -53,7 +53,7 @@
 ## 🚀 How to Run
 1. Clone this repository:
    ```bash
-   git clone [https://github.com/username/EasyWakeUp.git](https://github.com/username/EasyWakeUp.git)
+   git clone https://github.com/username/EasyWakeUp.git
    ```
 2. Open the project in Android Studio.
 3. Let Gradle sync dependencies.
