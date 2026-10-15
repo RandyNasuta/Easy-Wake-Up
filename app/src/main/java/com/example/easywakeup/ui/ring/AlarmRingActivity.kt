@@ -1,5 +1,7 @@
 package com.example.easywakeup.ui.ring
 
+import android.app.KeyguardManager
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -14,6 +16,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import android.view.WindowInsetsController
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -96,8 +99,26 @@ class AlarmRingActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setShowWhenLocked(true)
-        setTurnScreenOn(true)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            keyguardManager.requestDismissKeyguard(this, null)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            )
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        val windowInsetController = WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetController.hide(WindowInsetsCompat.Type.systemBars())
+        windowInsetController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         val soundName = intent.getStringExtra("EXTRA_ALARM_SOUND") ?: "Sound 1"
         val methods = intent.getStringExtra("EXTRA_ALARM_METHODS") ?: ""
@@ -109,10 +130,6 @@ class AlarmRingActivity : ComponentActivity() {
             override fun handleOnBackPressed() {
             }
         })
-
-        val windowInsetController = WindowCompat.getInsetsController(window, window.decorView)
-        windowInsetController.hide(WindowInsetsCompat.Type.systemBars())
-        windowInsetController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         setContent {
             EasyWakeUpTheme {
@@ -183,8 +200,16 @@ class AlarmRingActivity : ComponentActivity() {
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = null
-
         vibrator?.cancel()
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val alarmId = intent.getLongExtra("EXTRA_ALARM_ID", -1L).toInt()
+
+        if (alarmId != -1) {
+            notificationManager.cancel(alarmId)
+        } else {
+            notificationManager.cancelAll()
+        }
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

@@ -52,9 +52,14 @@ class AlarmScheduler(private val context: Context) {
         )
 
         try {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
+
+            val alarmClockInfo = AlarmManager.AlarmClockInfo(
                 calendar.timeInMillis,
+                pendingIntent
+            )
+
+            alarmManager.setAlarmClock(
+                alarmClockInfo,
                 pendingIntent
             )
         } catch (e: SecurityException) {
